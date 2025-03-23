@@ -401,8 +401,8 @@ for i in selData
         i.tpLine.delete(), i.enLine.delete(), i.slLine.delete()
         selData.remove(idx), selData.clear()
 
-for i in selData
-    idx = selData.indexof(i)
+for i = 0 to selData.size() - 1
+    idx = selData.indexof(selData.get(i))
     i.tpLine.set_x2(time), i.enLine.set_x2(time), i.slLine.set_x2(time)
     linefill.new(i.enLine, i.tpLine, color.new(color.lime, 90))
     linefill.new(i.enLine, i.slLine, color.new(color.red,  90))
