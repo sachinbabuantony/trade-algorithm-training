@@ -1,46 +1,29 @@
 // This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © SachinBabuAntony
-
-
-//@strategy_alert_message  {{strategy.order.alert_message}}
-
 
 //@version=5
 strategy("HTF Pivots And Choch [sachinbabuant]", overlay = true, max_lines_count = 500, max_labels_count = 500, max_boxes_count = 500)
 //------------------------------------------------------------------------------
-//Settings
-//-----------------------------------------------------------------------------{
-
+// Settings
+//------------------------------------------------------------------------------
 
 // Store Recent High And Time 
-
-
 var allHi = map.new<float, int>()
-
 if allHi.contains(high)
     allHi.remove(high)
     allHi.put(high, time)
 else
     allHi.put(high, time)
 
-
 // Store Recent Low And Time Using Map
-
 var allLo = map.new<float, int>()
-
 if allLo.contains(low)
     allLo.remove(low)
     allLo.put(low, time)
 else
     allLo.put(low, time)
 
-
-
-
 pivotTf = input.timeframe("15", "Pivot Timeframe", inline = "1", group = "HTF Pivot Setting")
-pvtLen = input(14, 'Pivot Lookback', inline = "1", group = "HTF Pivot Setting")
-//Htf EMA 
-
+pvtLen = input(20, 'Pivot Lookback', inline = "1", group = "HTF Pivot Setting")
 
 getLoIdx(x, z)=>
     int getIdx = na
@@ -51,7 +34,6 @@ getLoIdx(x, z)=>
                 break
     getIdx
 
-
 getHiIdx(x, z)=>
     int getIdx = na
     if z
@@ -61,31 +43,22 @@ getHiIdx(x, z)=>
                 break
     getIdx
 
-
-
 type pivotData
     int   tm = na
     float ph = na
     float pl = na
 
-
 new = pivotData.new(time[pvtLen], ta.pivothigh(pvtLen, pvtLen), ta.pivotlow(pvtLen, pvtLen))
-
 pivot = request.security(syminfo.tickerid, pivotTf, new[barstate.isrealtime ? 1 : 0]) [barstate.isrealtime ? 0 : 1 ]
-    
 
 if na(pivot)
     pivot := pivotData.new(na, na)
 
-
 htfPhCond = not na(pivot.ph) and na(pivot.ph[1])
 htfPlCond = not na(pivot.pl) and na(pivot.pl[1])
 
-
 var phLin = array.new_line()
 var plLin = array.new_line()
-
-
 
 if htfPhCond
     hiId = allHi.get(pivot.ph)
@@ -97,14 +70,11 @@ if htfPlCond
     loIdx = na(loId) ? pivot.tm : loId
     plLin.push(line.new(x1 = loIdx, y1 = pivot.pl, x2 = time, y2 = pivot.pl, xloc = xloc.bar_time, color = color.lime))
 
-
-
 if phLin.size() > 1
     phLin.shift().delete()
 
 if plLin.size() > 1
     plLin.shift().delete()
-
 
 phSrc = high
 plSrc = low 
@@ -119,7 +89,6 @@ for i in phLin
         phLin.remove(idx)
         hiBreak := true
 
-
 for i in plLin
     idx = plLin.indexof(i)
     if plSrc <= i.get_y1()
@@ -127,17 +96,12 @@ for i in plLin
         plLin.remove(idx)
         loBreak := true
 
-
-
-
-
-
 //------------------------------------------------------------------------------
 // Settings
-//-----------------------------------------------------------------------------{
+//------------------------------------------------------------------------------
 length = input.int(3, minval = 3, group = "BOS/ChoCH Indicator Settings")
 
-//Colors
+// Colors
 showBull = input(true, 'Bullish Structures', inline = 'bull', group = 'Style')
 bullCss = input.color(#089981, '', inline = 'bull', group = 'Style')
 
@@ -150,23 +114,23 @@ supCss = input.color(#089981, '', inline = 's', group = 'Style')
 showResistance = input(false, 'Resistance', inline = 'r', group = 'Style')
 resCss = input.color(#f23645, '', inline = 'r', group = 'Style')
 
-//Dashboard
+// Dashboard
 showDash  = input(false, 'Show Dashboard', group = 'Dashboard')
 dashLoc  = input.string('Top Right', 'Location', options = ['Top Right', 'Bottom Right', 'Bottom Left'], group = 'Dashboard')
 textSize = input.string('Small', 'Size'        , options = ['Tiny', 'Small', 'Normal']                 , group = 'Dashboard')
 
-//-----------------------------------------------------------------------------}
-//Types
-//-----------------------------------------------------------------------------{
+//------------------------------------------------------------------------------
+// Types
+//------------------------------------------------------------------------------
 type fractal
     float value
     int loc
     bool iscrossed
 
-//-----------------------------------------------------------------------------}
-//Fractal Detection
-//-----------------------------------------------------------------------------{
-var p = int(length/2)
+//------------------------------------------------------------------------------
+// Fractal Detection
+//------------------------------------------------------------------------------
+var p = int(length / 2)
 n = bar_index
 
 dh = math.sum(math.sign(high - high[1]), p)
@@ -178,9 +142,9 @@ bearf = dl == p and dl[p] == -p and low[p] == ta.lowest(length)
 bullf_count = ta.cum(bullf ? 1 : 0)
 bearf_count = ta.cum(bearf ? 1 : 0)
 
-//-----------------------------------------------------------------------------}
-//Bullish market structure
-//-----------------------------------------------------------------------------{
+//------------------------------------------------------------------------------
+// Bullish market structure
+//------------------------------------------------------------------------------
 var upper = fractal.new()
 var line lower_lvl = na
 var label ms_lbl = na
@@ -190,9 +154,8 @@ var os = 0
 
 if bullf
     upper.value := high[p]
-    upper.loc := n-p
+    upper.loc := n - p
     upper.iscrossed := false
-
 
 bool chochDw = false 
 bool chochUp = false
@@ -202,7 +165,6 @@ bool bosUp = false
 
 float dwEnPrc = na
 float upEnPrc = na
-
 
 if ta.crossover(close, upper.value) and not upper.iscrossed
     line.new(upper.loc, upper.value, n, upper.value, color = showBull ? bullCss : na)
@@ -220,15 +182,15 @@ if ta.crossover(close, upper.value) and not upper.iscrossed
 
     upEnPrc := upper.value
 
-    //Set support
+    // Set support
     k = 2
     min = low[1]
-    for i = 2 to (n - upper.loc)-1
+    for i = 2 to (n - upper.loc) - 1
         min := math.min(low[i], min)
         k := low[i] == min ? i : k
 
     if showSupport
-        lower_lvl := line.new(n-k, min, n, min, color = bullCss, style = line.style_dashed)
+        lower_lvl := line.new(n - k, min, n, min, color = bullCss, style = line.style_dashed)
         broken_sup := false
 
     upper.iscrossed := true
@@ -241,9 +203,9 @@ else if showSupport and not broken_sup
     if close < lower_lvl.get_y2()
         broken_sup := true
 
-//-----------------------------------------------------------------------------}
-//Bearish market structure
-//-----------------------------------------------------------------------------{
+//------------------------------------------------------------------------------
+// Bearish market structure
+//------------------------------------------------------------------------------
 var lower = fractal.new()
 var line upper_lvl = na
 var broken_res = false
@@ -251,7 +213,7 @@ var bear_ms_count = 0
 
 if bearf
     lower.value := low[p]
-    lower.loc := n-p
+    lower.loc := n - p
     lower.iscrossed := false
 
 if ta.crossunder(close, lower.value) and not lower.iscrossed
@@ -270,16 +232,15 @@ if ta.crossunder(close, lower.value) and not lower.iscrossed
 
     dwEnPrc := lower.value
 
-
-    //Set resistance
+    // Set resistance
     k = 2
     max = high[1]
-    for i = 2 to (n - lower.loc)-1
+    for i = 2 to (n - lower.loc) - 1
         max := math.max(high[i], max)
         k := high[i] == max ? i : k
 
     if showResistance
-        upper_lvl := line.new(n-k, max, n, max, color = bearCss, style = line.style_dashed)
+        upper_lvl := line.new(n - k, max, n, max, color = bearCss, style = line.style_dashed)
         broken_res := false
     
     lower.iscrossed := true
@@ -292,9 +253,9 @@ else if showResistance and not broken_res
     if close > upper_lvl.get_y2()
         broken_res := true
 
-//-----------------------------------------------------------------------------}
-//Dashboard
-//-----------------------------------------------------------------------------{
+//------------------------------------------------------------------------------
+// Dashboard
+//------------------------------------------------------------------------------
 var table_position = dashLoc == 'Bottom Left' ? position.bottom_left 
   : dashLoc == 'Top Right' ? position.top_right 
   : position.bottom_right
@@ -313,7 +274,7 @@ var tb = table.new(table_position, 2, 3
 if showDash
     if barstate.isfirst
         tb.cell(0, 0, 'Structure To Fractal %', text_color = color.white, text_size = table_size)
-        tb.merge_cells(0,0,1,0)
+        tb.merge_cells(0, 0, 1, 0)
 
         tb.cell(0, 1, 'Bullish', text_color = #089981, text_size = table_size)
         tb.cell(1, 1, 'Bearish', text_color = #f23645, text_size = table_size)
@@ -322,21 +283,34 @@ if showDash
         tb.cell(0, 2, str.tostring(bull_ms_count / bullf_count * 100, format.percent), text_color = #089981, text_size = table_size)
         tb.cell(1, 2, str.tostring(bear_ms_count / bearf_count * 100, format.percent), text_color = #f23645, text_size = table_size)
 
-//-----------------------------------------------------------------------------}
-//Plots
-//-----------------------------------------------------------------------------{
+//------------------------------------------------------------------------------
+// Plots
+//------------------------------------------------------------------------------
 plot(broken_res and not broken_res[1] ? low : na, 'Resistance Breakout', #089981, 2, plot.style_circles)
 plot(broken_sup and not broken_sup[1] ? high : na, 'Support Breakout', #f23645, 2, plot.style_circles)
 
-//-----------------------------------------------------------------------------}
+//------------------------------------------------------------------------------
+// Session Settings
+//------------------------------------------------------------------------------
+sessionStart = input.string("0900", "Session Start Time (HHMM)", group = "Session Settings")
+sessionEnd   = input.string("1400", "Session End Time (HHMM)", group = "Session Settings")
+sessionTZ    = "America/New_York"  // Time zone for New York
 
+// Define the trading session
+session = sessionStart + "-" + sessionEnd
+isInSession = not na(time(timeframe.period, session, sessionTZ))
 
-riskRewd = input.float(2, "Risk:Reward",          minval = 0.01, inline = "1", group = "Strategy Settings")
-slCanLen =   input.int(3, "SL Lookback Candles",  minval = 1,    inline = "2", group = "Strategy Settings")
-cnclCand =   input.int(7, "Order Cancel Candles", minval = 1,    inline = "3", group = "Strategy Settings")
-
+//------------------------------------------------------------------------------
+// Strategy Settings
+//------------------------------------------------------------------------------
+riskRewd = input.float(2.5, "Risk:Reward", minval = 0.01, inline = "1", group = "Strategy Settings")
+slCanLen = input.int(3, "SL Lookback Candles", minval = 1, inline = "2", group = "Strategy Settings")
+cnclCand = input.int(1, "Order Cancel Candles", minval = 1, inline = "3", group = "Strategy Settings")
 enabTrad = input.bool(true, "Enable Trades", inline = "1", group = "Strategy Settings")
 
+// Add user inputs for quantity and max loss per trade
+qty = input.float(1.0, "Quantity", minval = 0.01, group = "Strategy Settings")
+maxLossPerTrade = input.float(100.0, "Max Loss Per Trade ($)", minval = 0.01, group = "Strategy Settings")
 
 buyEnSyn = "Buy Entry"
 selEnSyn = "Sell Entry"
@@ -347,8 +321,6 @@ selTpSyn = "Sell Target Hit"
 buySlSyn = "Buy Stop Hit"
 selSlSyn = "Sell Stop Hit"
 
-
-
 selCond = hiBreak and (chochDw or bosDw)
 buyCond = loBreak and (chochUp or bosUp)
 
@@ -358,19 +330,11 @@ if selCond
 if buyCond
     loBreak := false 
 
-
-// bgcolor(bosUp ? color.white  : na)
-// bgcolor(bosDw ? color.yellow : na)
-
-
-
 bgcolor(buyCond ? color.white  : na)
 bgcolor(selCond ? color.yellow : na)
 
-
 hh3 = ta.highest(slCanLen)
 ll3 = ta.lowest(slCanLen)
-
 
 type tradeData
     bool   entry  = na
@@ -380,29 +344,25 @@ type tradeData
     line   slLine = na
     string ordrID = na
 
-
 var buyData = array.new<tradeData>()
 var selData = array.new<tradeData>()
-
-
-
 
 for i in selData
     idx = selData.indexof(i)
     if high >= i.enLine.get_y1() and not i.entry
         i.tpLine.set_x1(time), i.enLine.set_x1(time), i.slLine.set_x1(time)
-        i.tpLine.set_x2(time+1000), i.enLine.set_x2(time+1000), i.slLine.set_x2(time+1000)
+        i.tpLine.set_x2(time + 1000), i.enLine.set_x2(time + 1000), i.slLine.set_x2(time + 1000)
         selData.set(idx, tradeData.new(true, i.entBar, i.tpLine, i.enLine, i.slLine, i.ordrID))
 
 for i in selData
     idx = selData.indexof(i)
-    if not i.entry and math.abs(bar_index-i.entBar) >= cnclCand
+    if not i.entry and math.abs(bar_index - i.entBar) >= cnclCand
         strategy.cancel(i.ordrID)
         i.tpLine.delete(), i.enLine.delete(), i.slLine.delete()
         selData.remove(idx), selData.clear()
 
-for i = 0 to selData.size() - 1
-    idx = selData.indexof(selData.get(i))
+for i in selData
+    idx = selData.indexof(i)
     i.tpLine.set_x2(time), i.enLine.set_x2(time), i.slLine.set_x2(time)
     linefill.new(i.enLine, i.tpLine, color.new(color.lime, 90))
     linefill.new(i.enLine, i.slLine, color.new(color.red,  90))
@@ -410,18 +370,16 @@ for i = 0 to selData.size() - 1
     if i.entry and (high >= i.slLine.get_y1() or low <= i.tpLine.get_y1())
         selData.remove(idx), selData.clear()
 
-
-
 for i in buyData
     idx = buyData.indexof(i)
     if low <= i.enLine.get_y1() and not i.entry
         i.tpLine.set_x1(time), i.enLine.set_x1(time), i.slLine.set_x1(time)
-        i.tpLine.set_x2(time+1000), i.enLine.set_x2(time+1000), i.slLine.set_x2(time+1000)
+        i.tpLine.set_x2(time + 1000), i.enLine.set_x2(time + 1000), i.slLine.set_x2(time + 1000)
         buyData.set(idx, tradeData.new(true, i.entBar, i.tpLine, i.enLine, i.slLine, i.ordrID))
 
 for i in buyData
     idx = buyData.indexof(i)
-    if not i.entry and math.abs(bar_index-i.entBar) >= cnclCand
+    if not i.entry and math.abs(bar_index - i.entBar) >= cnclCand
         strategy.cancel(i.ordrID)
         i.tpLine.delete(), i.enLine.delete(), i.slLine.delete()
         buyData.remove(idx), buyData.clear()
@@ -435,89 +393,42 @@ for i in buyData
     if i.entry and (high >= i.tpLine.get_y1() or low <= i.slLine.get_y1())
         buyData.remove(idx), buyData.clear()
 
-
-
-
-
-
-if selCond
+if selCond and isInSession
     enPrc = dwEnPrc
     slPrc = hh3 
-    tpPrc = enPrc - (math.abs(slPrc-enPrc) * riskRewd)
+    tpPrc = enPrc - (math.abs(slPrc - enPrc) * riskRewd)
+    
+    // Calculate new stop-loss price based on max loss per trade
+    newSlPrc = enPrc + (maxLossPerTrade / qty)
+    stopPrc = math.min(slPrc, newSlPrc)  // Use the lower price (closer to entry)
+    
     orderId = "Sell" + str.tostring(bar_index)
-    if enabTrad //and false
-        strategy.order(orderId, strategy.short, limit = enPrc,  comment = "Sell", alert_message = selEnSyn)
-        strategy.exit('ExSell', orderId,  limit = tpPrc, stop = slPrc, alert_profit = selTpSyn, alert_loss = selSlSyn)
-
-    if selData.size() == 0 //and buyData.size() == 0    
+    if enabTrad
+        strategy.order(orderId, strategy.short, qty = qty, limit = enPrc,  comment = "Sell", alert_message = selEnSyn)
+        strategy.exit('ExSell', orderId,  limit = tpPrc, stop = stopPrc, alert_profit = selTpSyn, alert_loss = selSlSyn)
+    if selData.size() == 0
         selData.push(tradeData.new(false, bar_index,
-                                     line.new(first_point = chart.point.from_time(time, tpPrc), second_point = chart.point.from_time(time+1000, tpPrc), xloc = xloc.bar_time, extend = extend.none, color = color.green, style = line.style_dashed, width = 1),  
-                                     line.new(first_point = chart.point.from_time(time, enPrc), second_point = chart.point.from_time(time+1000, enPrc), xloc = xloc.bar_time, extend = extend.none, color = color.blue,  style = line.style_dashed, width = 1), 
-                                     line.new(first_point = chart.point.from_time(time, slPrc), second_point = chart.point.from_time(time+1000, slPrc), xloc = xloc.bar_time, extend = extend.none, color = color.red,   style = line.style_dashed, width = 1), 
+                                     line.new(first_point = chart.point.from_time(time, tpPrc), second_point = chart.point.from_time(time + 1000, tpPrc), xloc = xloc.bar_time, extend = extend.none, color = color.green, style = line.style_dashed, width = 1),  
+                                     line.new(first_point = chart.point.from_time(time, enPrc), second_point = chart.point.from_time(time + 1000, enPrc), xloc = xloc.bar_time, extend = extend.none, color = color.blue,  style = line.style_dashed, width = 1), 
+                                     line.new(first_point = chart.point.from_time(time, stopPrc), second_point = chart.point.from_time(time + 1000, stopPrc), xloc = xloc.bar_time, extend = extend.none, color = color.red,   style = line.style_dashed, width = 1), 
                                      orderId))
 
-
-if buyCond
+if buyCond and isInSession
     enPrc = upEnPrc
     slPrc = ll3 
-    tpPrc = enPrc + (math.abs(slPrc-enPrc) * riskRewd)
+    tpPrc = enPrc + (math.abs(slPrc - enPrc) * riskRewd)
+    
+    // Calculate new stop-loss price based on max loss per trade
+    newSlPrc = enPrc - (maxLossPerTrade / qty)
+    stopPrc = math.max(slPrc, newSlPrc)  // Use the higher price (closer to entry)
+    
     orderId = "Buy" + str.tostring(bar_index)
-    if enabTrad //and false
-        strategy.order(orderId, strategy.long, limit = enPrc,  comment = "Buy", alert_message = buyEnSyn)
-        strategy.exit('ExBuy', orderId,  limit = tpPrc, stop = slPrc, alert_profit = buyTpSyn, alert_loss = buySlSyn)
-    if buyData.size() == 0 //and selData.size() == 0    
+    if enabTrad
+        strategy.order(orderId, strategy.long, qty = qty, limit = enPrc,  comment = "Buy", alert_message = buyEnSyn)
+        strategy.exit('ExBuy', orderId,  limit = tpPrc, stop = stopPrc, alert_profit = buyTpSyn, alert_loss = buySlSyn)
+    if buyData.size() == 0
         buyData.push(tradeData.new(false, bar_index,
-                                     line.new(first_point = chart.point.from_time(time, tpPrc), second_point = chart.point.from_time(time+1000, tpPrc), xloc = xloc.bar_time, extend = extend.none, color = color.green, style = line.style_dashed, width = 1),  
-                                     line.new(first_point = chart.point.from_time(time, enPrc), second_point = chart.point.from_time(time+1000, enPrc), xloc = xloc.bar_time, extend = extend.none, color = color.blue,  style = line.style_dashed, width = 1), 
-                                     line.new(first_point = chart.point.from_time(time, slPrc), second_point = chart.point.from_time(time+1000, slPrc), xloc = xloc.bar_time, extend = extend.none, color = color.red,   style = line.style_dashed, width = 1), 
+                                     line.new(first_point = chart.point.from_time(time, tpPrc), second_point = chart.point.from_time(time + 1000, tpPrc), xloc = xloc.bar_time, extend = extend.none, color = color.green, style = line.style_dashed, width = 1),  
+                                     line.new(first_point = chart.point.from_time(time, enPrc), second_point = chart.point.from_time(time + 1000, enPrc), xloc = xloc.bar_time, extend = extend.none, color = color.blue,  style = line.style_dashed, width = 1), 
+                                     line.new(first_point = chart.point.from_time(time, stopPrc), second_point = chart.point.from_time(time + 1000, stopPrc), xloc = xloc.bar_time, extend = extend.none, color = color.red,   style = line.style_dashed, width = 1), 
                                      orderId))
-
-
-
-
-
-
-
-
-
-
-// type tradeLines
-//     bool buyEnb = na
-//     line tpLine = na
-//     line enLine = na
-//     line slLine = na
-
-
-// var buyTradeCounts = array.new_int()
-// var selTradeCounts = array.new_int()
-
-
-// var winCount = array.new_int()
-// var losCount = array.new_int()
-
-// tradeBox(bool _buy, bool _cond, float _tp, float _en, float _sl, int _tradeNum, arr, _tradeAll)=>
-
-//     var tradeData = array.new<tradeLines>()
-//     if _cond and (tradeData.size() == 0 or _tradeAll)//and arr.size() < _tradeNum
-//         arr.push(1)
-//         tradeData.push(tradeLines.new(_buy, 
-//                                       line.new(first_point = chart.point.from_time(time, _tp), second_point = chart.point.from_time(time, _tp), xloc = xloc.bar_time, extend = extend.none, color = color.green, style = line.style_dashed, width = 1),  
-//                                       line.new(first_point = chart.point.from_time(time, _en), second_point = chart.point.from_time(time, _en), xloc = xloc.bar_time, extend = extend.none, color = color.blue,  style = line.style_dashed, width = 1), 
-//                                       line.new(first_point = chart.point.from_time(time, _sl), second_point = chart.point.from_time(time, _sl), xloc = xloc.bar_time, extend = extend.none, color = color.red,   style = line.style_dashed, width = 1)))
-
-//     if tradeData.size() > 0
-//         for i in tradeData
-//             idx = tradeData.indexof(i)
-//             i.tpLine.set_x2(time), i.enLine.set_x2(time), i.slLine.set_x2(time)
-//             linefill.new(i.enLine, i.tpLine, color.new(color.lime, 90))
-//             linefill.new(i.enLine, i.slLine, color.new(color.red,  90))
-
-//             winCond = (high >= i.tpLine.get_y1() and i.buyEnb) or (low  <= i.tpLine.get_y1() and not i.buyEnb)
-//             losCond = (low  <= i.slLine.get_y1() and i.buyEnb) or (high >= i.slLine.get_y1() and not i.buyEnb)
-//             if winCond
-//                 winCount.push(1)
-//             if losCond
-//                 losCount.push(1)
-
-//             if ((high >= i.tpLine.get_y1() and i.buyEnb) or (low <= i.tpLine.get_y1() and not i.buyEnb)) or ((low <= i.slLine.get_y1() and i.buyEnb) or (high >= i.slLine.get_y1() and not i.buyEnb))
-//                 tradeData.remove(idx)
