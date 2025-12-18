@@ -1,0 +1,112 @@
+//@version=6
+strategy("FVG above/below EMA+VWAP (TF configurable) + RR/SL", overlay=true,
+     initial_capital=10000, pyramiding=0, process_orders_on_close=true)
+
+//──────────────────────────────────────────────────────────────────────────────
+// Inputs
+//──────────────────────────────────────────────────────────────────────────────
+sigTf      = input.timeframe("60", "Signal timeframe (FVG/EMA/VWAP computed on)")
+emaLen     = input.int(20, "EMA Length", minval=1)
+emaSrc     = input.source(close, "EMA Source")
+
+vwapSrc    = input.source(hlc3, "VWAP Source")
+vwapAnchor = input.string("Session", "VWAP Anchor",
+            options=["Session","Week","Month","Quarter","Year"])
+
+strictZone = input.bool(true, "Strict: FVG gap zone must be fully above/below EMA & VWAP")
+
+// Risk settings (ticks)
+slTicks    = input.int(30, "Stop Loss (ticks)", minval=1)
+rr         = input.float(1.5, "Risk:Reward (TP = SL * RR)", minval=0.1, step=0.1)
+
+// Trade toggles
+allowLong  = input.bool(true, "Enable Longs")
+allowShort = input.bool(true, "Enable Shorts")
+
+//──────────────────────────────────────────────────────────────────────────────
+// Signal-timeframe computations
+// FVG definition (3-candle):
+//   Bull FVG: low > high[2]   => gap [high[2], low]
+//   Bear FVG: high < low[2]   => gap [high, low[2]]
+//──────────────────────────────────────────────────────────────────────────────
+f_isNewPeriod(_anchor) =>
+    switch _anchor
+        "Session" => timeframe.change("D")
+        "Week"    => timeframe.change("W")
+        "Month"   => timeframe.change("M")
+        "Quarter" => timeframe.change("3M")
+        "Year"    => timeframe.change("12M")
+
+f_vwap(_src, _anchor) =>
+    isNew = f_isNewPeriod(_anchor)
+    [_v, _, _] = ta.vwap(_src, isNew, 1)
+    _v
+
+// Return a tuple from HTF: bullFVG, bearFVG, bullLow, bullHigh, bearLow, bearHigh, ema, vwap
+f_sig() =>
+    _ema  = ta.ema(emaSrc, emaLen)
+    _vwap = f_vwap(vwapSrc, vwapAnchor)
+
+    _bull = low > high[2]
+    _bear = high < low[2]
+
+    // Gap bounds
+    _bullLo = high[2]
+    _bullHi = low
+
+    _bearLo = high
+    _bearHi = low[2]
+
+    [_bull, _bear, _bullLo, _bullHi, _bearLo, _bearHi, _ema, _vwap]
+
+// Pull signal-timeframe values down to chart timeframe
+[bullFVG, bearFVG, bullLo, bullHi, bearLo, bearHi, emaHTF, vwapHTF] =
+    request.security(syminfo.tickerid, sigTf, f_sig(), barmerge.gaps_off, barmerge.lookahead_off)
+
+// Plot EMA/VWAP (from signal TF) for visibility
+plot(emaHTF,  "EMA (signal TF)",  color=color.new(color.aqua, 0),  linewidth=2)
+plot(vwapHTF, "VWAP (signal TF)", color=color.new(color.blue, 0), linewidth=2)
+
+//──────────────────────────────────────────────────────────────────────────────
+// Entry conditions: FVG created above/below BOTH EMA and VWAP (on signal TF)
+//──────────────────────────────────────────────────────────────────────────────
+aboveBoth(_x) => _x > emaHTF and _x > vwapHTF
+belowBoth(_x) => _x < emaHTF and _x < vwapHTF
+
+longOk  = strictZone ? (bullFVG and aboveBoth(bullLo) and aboveBoth(bullHi)) : (bullFVG and aboveBoth(close))
+shortOk = strictZone ? (bearFVG and belowBoth(bearLo) and belowBoth(bearHi)) : (bearFVG and belowBoth(close))
+
+// Only fire once per *new* signal bar on the signal timeframe
+// (prevents multiple entries on lower TF while HTF bar is building)
+newSigBar = request.security(syminfo.tickerid, sigTf, barstate.isconfirmed, barmerge.gaps_off, barmerge.lookahead_off)
+
+//──────────────────────────────────────────────────────────────────────────────
+// Risk management: SL ticks + RR TP
+// Uses tick size of current symbol.
+//──────────────────────────────────────────────────────────────────────────────
+tick = syminfo.mintick
+slPts = slTicks * tick
+tpPts = slPts * rr
+
+// Place entries
+if newSigBar
+    if allowLong and longOk and strategy.position_size <= 0
+        strategy.entry("Long", strategy.long)
+
+    if allowShort and shortOk and strategy.position_size >= 0
+        strategy.entry("Short", strategy.short)
+
+// Exits (always attached)
+if strategy.position_size > 0
+    longSL = strategy.position_avg_price - slPts
+    longTP = strategy.position_avg_price + tpPts
+    strategy.exit("Long Exit", "Long", stop=longSL, limit=longTP)
+
+if strategy.position_size < 0
+    shortSL = strategy.position_avg_price + slPts
+    shortTP = strategy.position_avg_price - tpPts
+    strategy.exit("Short Exit", "Short", stop=shortSL, limit=shortTP)
+
+// Optional markers
+plotshape(newSigBar and longOk,  title="Bull FVG above EMA+VWAP", style=shape.triangleup,   location=location.belowbar, size=size.tiny, color=color.new(color.lime, 0), text="FVG↑")
+plotshape(newSigBar and shortOk, title="Bear FVG below EMA+VWAP", style=shape.triangledown, location=location.abovebar, size=size.tiny, color=color.new(color.red,  0), text="FVG↓")
