@@ -5,7 +5,7 @@ Welcome to the **HTF Pivots and CHoCH Indicator** project! This Pine Script-base
 ## Features
 
 ### 1. High-Timeframe Pivots
-- Identifies high-timeframe pivot highs and lows using customizable settings.
+- Identifies high-timeframe pivot highs and lows using customizable settings
 - Uses `request.security` to fetch pivot data from higher timeframes.
 - Dynamically draws pivot lines on the chart with real-time updates.
 
